@@ -1,0 +1,144 @@
+import { useState } from "react";
+import { Sidebar, type PageId } from "@/components/Sidebar";
+import { PageHeader } from "@/components/PageHeader";
+import { RoutineBuilder } from "@/components/RoutineBuilder";
+import { RoutineOutput } from "@/components/RoutineOutput";
+import { PROGRESSION_MODELS } from "@/lib/progressionModels";
+import { generateRoutine, newRoutine, type GeneratedRoutine, type Routine } from "@/lib/routine";
+import { useToast } from "@/hooks/use-toast";
+
+const Index = () => {
+  const [page, setPage] = useState<PageId>("planner");
+  const [routine, setRoutine] = useState<Routine>(newRoutine);
+  const [generated, setGenerated] = useState<GeneratedRoutine | null>(null);
+  const { toast } = useToast();
+
+  const handleGenerate = () => {
+    const totalEx = routine.days.reduce((acc, d) => acc + d.exercises.length, 0);
+    const missing = routine.days.some((d) => d.exercises.some((e) => !e.name || e.startWeight <= 0));
+    if (missing) {
+      toast({
+        title: "Faltan datos",
+        description: "Cada ejercicio necesita nombre y peso inicial > 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const gen = generateRoutine(routine);
+    setGenerated(gen);
+    toast({
+      title: "Rutina generada",
+      description: `${routine.weeks} semanas · ${routine.days.length} día(s) · ${totalEx} ejercicios`,
+    });
+    setTimeout(() => {
+      document.getElementById("routine-output")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Sidebar active={page} onChange={setPage} />
+
+      <main className="md:ml-[220px] min-h-screen">
+        {page === "planner" && (
+          <div className="px-5 md:px-10 py-8 md:py-12 max-w-[1200px] mx-auto">
+            <PageHeader
+              chip="Generador · Basado en evidencia"
+              title="Diseña tu"
+              highlight="rutina"
+              description="Construye una rutina completa con varios días y ejercicios. Elige el modelo de progresión, define las semanas y exporta a Excel listo para pegar en Stenfit."
+            />
+
+            <RoutineBuilder routine={routine} onChange={setRoutine} onGenerate={handleGenerate} />
+
+            {generated && <RoutineOutput generated={generated} />}
+
+            {!generated && (
+              <div className="surface-card p-8 text-center">
+                <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
+                  Rutina vacía
+                </p>
+                <p className="text-foreground mt-2">
+                  Configura los días y pulsa <span className="text-primary font-medium">Generar rutina</span> para ver el plan.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {page === "library" && (
+          <div className="px-5 md:px-10 py-8 md:py-12 max-w-[1200px] mx-auto">
+            <PageHeader
+              chip="Biblioteca · Modelos científicos"
+              title="Modelos de"
+              highlight="progresión"
+              description="Referencia rápida de los 5 modelos disponibles, su lógica, ventajas y limitaciones."
+            />
+            <div className="space-y-4">
+              {PROGRESSION_MODELS.map((m) => (
+                <article key={m.id} className="surface-card p-6">
+                  <div className="flex items-start gap-4 mb-3">
+                    <div className="text-3xl">{m.icon}</div>
+                    <div className="flex-1">
+                      <h3 className="font-display text-2xl text-foreground-strong tracking-wide">
+                        {m.name}
+                      </h3>
+                      <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-primary mt-1">
+                        {m.audience}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-foreground text-sm leading-relaxed mb-4">{m.description}</p>
+                  <div className="grid md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-success mb-2">
+                        Mejor para
+                      </p>
+                      <ul className="space-y-1">
+                        {m.bestFor.map((b) => (
+                          <li key={b} className="text-muted-foreground flex gap-1.5">
+                            <span className="text-success">✓</span> {b}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-warning mb-2">
+                        Considerar
+                      </p>
+                      <ul className="space-y-1">
+                        {m.caveats.map((c) => (
+                          <li key={c} className="text-muted-foreground flex gap-1.5">
+                            <span className="text-warning">!</span> {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="font-mono text-[10px] text-muted-soft mt-4 pt-4 border-t border-border-subtle leading-relaxed">
+                    📚 {m.citation}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(page === "history" || page === "settings") && (
+          <div className="px-5 md:px-10 py-8 md:py-12 max-w-[1200px] mx-auto">
+            <PageHeader
+              chip="Próximamente"
+              title={page === "history" ? "Historial" : "Ajustes"}
+              description="Esta sección estará disponible en la siguiente iteración."
+            />
+            <div className="surface-card p-12 text-center">
+              <p className="text-muted-foreground">🚧 En construcción</p>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Index;
